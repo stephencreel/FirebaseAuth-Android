@@ -191,8 +191,6 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 			if (user.getPhotoUrl() != null) {
 				new DownloadImageTask().execute(user.getPhotoUrl().toString());
 			}
-			mTextViewProfile.setText("DisplayName: " + user.getDisplayName());
-			mTextViewProfile.append("\n\n");
 			mTextViewProfile.append("Email: " + user.getEmail());
 			mTextViewProfile.append("\n\n");
 			mTextViewProfile.append("Firebase ID: " + user.getUid());
