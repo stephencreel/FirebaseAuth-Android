@@ -1,49 +1,50 @@
 apply plugin: 'com.android.application'
 
 android {
-	compileSdkVersion compileAndTargetSdk
-	buildToolsVersion '29.0.2'
+    compileSdkVersion compileAndTargetSdk
+    buildToolsVersion '29.0.2'
 
-	defaultConfig {
-		applicationId 'com.example.auth'
-		minSdkVersion 21
-		targetSdkVersion compileAndTargetSdk
-		versionCode 1
-		versionName '1.0'
-		resConfigs ('en', 'xxxhdpi')
-		ndk {
-			abiFilters "x86", "x86_64", "arm64-v8a", "armeabi-v7a"
-		}
-	}
+    defaultConfig {
+        applicationId 'com.example.auth'
+        minSdkVersion 21
+        targetSdkVersion compileAndTargetSdk
+        versionCode 1
+        versionName '1.0'
+        resConfigs('en', 'xxxhdpi')
+        ndk {
+            abiFilters "x86", "x86_64", "arm64-v8a", "armeabi-v7a"
+        }
+    }
 
-	buildTypes {
-		release {
-			minifyEnabled true
-			shrinkResources true
-			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-		}
-		debug {
-			splits.abi.enable = false
-			splits.density.enable = false
-			aaptOptions.cruncherEnabled = false
-		}
-	}
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            splits.abi.enable = false
+            splits.density.enable = false
+            aaptOptions.cruncherEnabled = false
+        }
+    }
 
-	dexOptions {
-		preDexLibraries true
-		maxProcessCount 8
-	}
+    dexOptions {
+        preDexLibraries true
+        maxProcessCount 8
+    }
 }
 
 dependencies {
-	implementation 'androidx.appcompat:appcompat:1.1.0'
-	implementation 'com.google.android.material:material:1.0.0'
-	implementation 'com.google.firebase:firebase-core:17.2.0'
-	implementation 'com.google.firebase:firebase-auth:19.0.0'
-	implementation 'com.google.android.gms:play-services-auth:17.0.0'
-	implementation 'com.facebook.android:facebook-login:5.4.0'
-	implementation('com.twitter.sdk.android:twitter:2.3.2') {
-		transitive = true
-	}
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.google.firebase:firebase-core:17.2.0'
+    implementation 'com.google.firebase:firebase-auth:19.0.0'
+    implementation 'com.google.android.gms:play-services-auth:17.0.0'
+    implementation 'com.facebook.android:facebook-login:5.4.0'
+    implementation('com.twitter.sdk.android:twitter:2.3.2') {
+        transitive = true
+    }
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 }
 apply plugin: 'com.google.gms.google-services'

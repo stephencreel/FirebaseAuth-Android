@@ -1,6 +1,7 @@
 package com.example.auth;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -191,6 +192,10 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 			if (user.getPhotoUrl() != null) {
 				new DownloadImageTask().execute(user.getPhotoUrl().toString());
 			}
+
+			// TEST
+			startActivity(new Intent(this, ChatActivity.class));
+
 			mTextViewProfile.append("Email: " + user.getEmail());
 			mTextViewProfile.append("\n\n");
 			mTextViewProfile.append("Firebase ID: " + user.getUid());
