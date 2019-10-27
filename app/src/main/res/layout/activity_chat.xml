@@ -6,19 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".ChatActivity">
 
-    <Button
-        android:id="@+id/sign_out_chat_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="159dp"
-        android:text="Sign Out"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button5" />
-
     <TextView
         android:id="@+id/textView"
         android:layout_width="wrap_content"
@@ -28,7 +15,6 @@
         android:layout_marginEnd="153dp"
         android:layout_marginBottom="366dp"
         android:text="Chats Will Go Here!"
-        app:layout_constraintBottom_toTopOf="@+id/sign_out_chat_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -39,8 +25,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="285dp"
         android:layout_marginBottom="188dp"
-        android:text="Button"
-        app:layout_constraintBottom_toTopOf="@+id/sign_out_chat_button"
+        android:text="Sign Out"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

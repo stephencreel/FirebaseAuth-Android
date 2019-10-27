@@ -1,5 +1,6 @@
 package com.example.auth;
 
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -10,9 +11,12 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import com.google.android.material.textfield.TextInputLayout;
 import androidx.appcompat.app.AlertDialog;
+
+import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -31,8 +35,6 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 	private static final String TAG = "EmailPasswordActivity";
 	private EditText mEdtEmail, mEdtPassword;
 	private FirebaseAuth mAuth;
-	private FirebaseAuth.AuthStateListener mAuthListener;
-	private ImageView mImageView;
 	private TextView mTextViewProfile;
 	private TextInputLayout mLayoutEmail, mLayoutPassword;
 
@@ -44,72 +46,26 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 		mTextViewProfile = findViewById(R.id.profile);
 		mEdtEmail = findViewById(R.id.edt_email);
 		mEdtPassword = findViewById(R.id.edt_password);
-		mImageView = findViewById(R.id.logo);
 		mLayoutEmail = findViewById(R.id.layout_email);
 		mLayoutPassword = findViewById(R.id.layout_password);
 
 		findViewById(R.id.email_sign_in_button).setOnClickListener(this);
 		findViewById(R.id.email_create_account_button).setOnClickListener(this);
-		findViewById(R.id.sign_out_button).setOnClickListener(this);
-		findViewById(R.id.verify_button).setOnClickListener(this);
 
 		mAuth = FirebaseAuth.getInstance();
-		mAuthListener = new FirebaseAuth.AuthStateListener() {
-			@Override
-			public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-				FirebaseUser user = firebaseAuth.getCurrentUser();
-				if (user != null) {
-					Log.d(TAG, "onAuthStateChanged:signed_in:" + user.getUid());
-				} else {
-					Log.d(TAG, "onAuthStateChanged:signed_out");
-				}
-				updateUI(user);
-			}
-		};
-	}
 
-	@Override
-	public void onStart() {
-		super.onStart();
-		mAuth.addAuthStateListener(mAuthListener);
-	}
-
-	@Override
-	public void onStop() {
-		super.onStop();
-		if (mAuthListener != null) {
-			mAuth.removeAuthStateListener(mAuthListener);
-		}
 	}
 
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
 			case R.id.email_create_account_button:
+				hideKeyboard(this);
 				createAccount(mEdtEmail.getText().toString(), mEdtPassword.getText().toString());
 				break;
 			case R.id.email_sign_in_button:
+				hideKeyboard(this);
 				signIn(mEdtEmail.getText().toString(), mEdtPassword.getText().toString());
-				break;
-			case R.id.sign_out_button:
-				signOut();
-				break;
-			case R.id.verify_button:
-				findViewById(R.id.verify_button).setEnabled(false);
-				final FirebaseUser firebaseUser = mAuth.getCurrentUser();
-				firebaseUser.sendEmailVerification().addOnCompleteListener(this, new OnCompleteListener<Void>() {
-					@Override
-					public void onComplete(@NonNull Task<Void> task) {
-						if (task.isSuccessful()) {
-							Toast.makeText(
-									EmailPasswordActivity.this, "Verification email sent to " + firebaseUser.getEmail(), Toast.LENGTH_LONG
-							).show();
-						} else {
-							Toast.makeText(EmailPasswordActivity.this, task.getException().getMessage(), Toast.LENGTH_LONG).show();
-						}
-						findViewById(R.id.verify_button).setEnabled(true);
-					}
-				});
 				break;
 		}
 	}
@@ -126,7 +82,9 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 					mTextViewProfile.setTextColor(Color.RED);
 					mTextViewProfile.setText(task.getException().getMessage());
 				} else {
-					mTextViewProfile.setTextColor(Color.DKGRAY);
+					mTextViewProfile.setText("");
+					sendVerify();
+					mAuth.signOut();
 				}
 				hideProgressDialog();
 			}
@@ -145,34 +103,20 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 				if (!task.isSuccessful()) {
 					mTextViewProfile.setTextColor(Color.RED);
 					mTextViewProfile.setText(task.getException().getMessage());
+				} else if (!mAuth.getCurrentUser().isEmailVerified()) {
+					mTextViewProfile.setText("Please verify account via email.");
+					mAuth.signOut();
 				} else {
-					mTextViewProfile.setTextColor(Color.DKGRAY);
+					mTextViewProfile.setText("");
+					gotoMain();
+
 				}
 				hideProgressDialog();
 			}
 		});
 	}
 
-	private void signOut() {
-		AlertDialog.Builder alert = new AlertDialog.Builder(this);
-		alert.setMessage(R.string.logout);
-		alert.setCancelable(false);
-		alert.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialogInterface, int i) {
-				mAuth.signOut();
-				updateUI(null);
-			}
-		});
-		alert.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialogInterface, int i) {
-				dialogInterface.dismiss();
-			}
-		});
-		alert.show();
-	}
-
+	// Used To Validate Input Entries
 	private boolean validateForm() {
 		if (TextUtils.isEmpty(mEdtEmail.getText().toString())) {
 			mLayoutEmail.setError("Required.");
@@ -187,59 +131,35 @@ public class EmailPasswordActivity extends BaseActivity implements View.OnClickL
 		}
 	}
 
-	private void updateUI(FirebaseUser user) {
-		if (user != null) {
-			if (user.getPhotoUrl() != null) {
-				new DownloadImageTask().execute(user.getPhotoUrl().toString());
-			}
-
-			// TEST
-			startActivity(new Intent(this, ChatActivity.class));
-
-			mTextViewProfile.append("Email: " + user.getEmail());
-			mTextViewProfile.append("\n\n");
-			mTextViewProfile.append("Firebase ID: " + user.getUid());
-			mTextViewProfile.append("\n\n");
-			mTextViewProfile.append("Email Verification: " + user.isEmailVerified());
-
-			if (user.isEmailVerified()) {
-				findViewById(R.id.verify_button).setVisibility(View.GONE);
-			} else {
-				findViewById(R.id.verify_button).setVisibility(View.VISIBLE);
-			}
-
-			findViewById(R.id.email_password_buttons).setVisibility(View.GONE);
-			findViewById(R.id.email_password_fields).setVisibility(View.GONE);
-			findViewById(R.id.signout_zone).setVisibility(View.VISIBLE);
-		} else {
-			mTextViewProfile.setText(null);
-
-			findViewById(R.id.email_password_buttons).setVisibility(View.VISIBLE);
-			findViewById(R.id.email_password_fields).setVisibility(View.VISIBLE);
-			findViewById(R.id.signout_zone).setVisibility(View.GONE);
+	// Hides the Keyboard on OnClick Event to Better Display Error Messages
+	public static void hideKeyboard(Activity activity) {
+		InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+		View view = activity.getCurrentFocus();
+		if (view == null) {
+			view = new View(activity);
 		}
-		hideProgressDialog();
+		imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 	}
 
-	private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-		@Override
-		protected Bitmap doInBackground(String... urls) {
-			Bitmap mIcon = null;
-			try {
-				InputStream in = new URL(urls[0]).openStream();
-				mIcon = BitmapFactory.decodeStream(in);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			return mIcon;
-		}
-
-		@Override
-		protected void onPostExecute(Bitmap result) {
-			if (result != null) {
-				mImageView.getLayoutParams().width = (getResources().getDisplayMetrics().widthPixels / 100) * 24;
-				mImageView.setImageBitmap(result);
-			}
-		}
+	// Initiates Main Chat App Activity
+	private void gotoMain() {
+		startActivity(new Intent(this, ChatActivity.class));
 	}
+
+	private void sendVerify() {
+		final FirebaseUser firebaseUser = mAuth.getCurrentUser();
+		firebaseUser.sendEmailVerification().addOnCompleteListener(this, new OnCompleteListener<Void>() {
+			@Override
+			public void onComplete(@NonNull Task<Void> task) {
+				if (task.isSuccessful()) {
+					Toast.makeText(
+							EmailPasswordActivity.this, "Verification email sent to " + firebaseUser.getEmail(), Toast.LENGTH_LONG
+					).show();
+				} else {
+					Toast.makeText(EmailPasswordActivity.this, task.getException().getMessage(), Toast.LENGTH_LONG).show();
+				}
+			}
+		});
+	}
+
 }

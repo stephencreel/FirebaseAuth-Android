@@ -24,12 +24,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
         mAuth = FirebaseAuth.getInstance();
 
-        findViewById(R.id.sign_out_chat_button).setOnClickListener(this);
+        findViewById(R.id.button5).setOnClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.sign_out_chat_button) {
+        if (v.getId() == R.id.button5) {
                 signOut();
         }
     }
