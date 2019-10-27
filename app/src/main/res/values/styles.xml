@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-	<style name="AppTheme" parent="Base.Theme.AppCompat.Light.DarkActionBar">
+	<style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
@@ -10,15 +10,6 @@
 	<style name="ThemeOverlay.MyDarkButton" parent="Base.ThemeOverlay.AppCompat.Dark">
 		<item name="colorButtonNormal">@color/colorAccent</item>
 		<item name="android:textColor">@android:color/white</item>
-	</style>
-
-	<style name="CustomLogoImageView">
-		<item name="android:layout_width">wrap_content</item>
-		<item name="android:layout_height">wrap_content</item>
-		<item name="android:layout_alignParentTop">true</item>
-		<item name="android:layout_centerHorizontal">true</item>
-		<item name="android:src">@mipmap/authentication</item>
-		<item name="android:adjustViewBounds">true</item>
 	</style>
 
 	<style name="CustomStatusTextView">

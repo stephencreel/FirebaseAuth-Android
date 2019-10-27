@@ -12,9 +12,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".ChatActivity"></activity>
+        <activity android:name=".MainActivity"></activity>
+        <activity android:name=".ChatActivity" />
         <activity
-            android:name=".EmailPasswordActivity"
+            android:name=".LoginActivity"
             android:label="Secure Chat Application"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize">
             <intent-filter>

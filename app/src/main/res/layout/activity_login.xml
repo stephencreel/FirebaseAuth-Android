@@ -58,7 +58,7 @@
 		android:orientation="horizontal">
 
 		<Button
-			android:id="@+id/email_sign_in_button"
+			android:id="@+id/login_sign_in_button"
 			style="?android:attr/button"
 			android:layout_width="0dp"
 			android:layout_height="wrap_content"
@@ -67,7 +67,7 @@
 			android:theme="@style/ThemeOverlay.MyDarkButton"/>
 
 		<Button
-			android:id="@+id/email_create_account_button"
+			android:id="@+id/login_create_account_button"
 			style="?android:attr/button"
 			android:layout_width="0dp"
 			android:layout_height="wrap_content"

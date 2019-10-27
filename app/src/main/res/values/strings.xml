@@ -45,5 +45,6 @@
     <string name="status_sign_in_failed">Sign-in failed</string>
     <string name="instant_validation">(instant validation)</string>
     <string name="firebase_status_fmt">Firebase User: %s</string>
+    <string name="new_chat">New Chat</string>
 
 </resources>
