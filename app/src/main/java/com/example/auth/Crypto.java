@@ -1,6 +1,8 @@
 package com.example.auth;
 
 import android.util.Base64;
+import android.util.Log;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
@@ -28,7 +30,7 @@ public class Crypto {
     }
 
     /*******************************************************************************
-     Cryptographic Methods
+     *************************** Cryptographic Methods *****************************
      *******************************************************************************/
 
     /*************************** Symmetric Encryption ******************************/
@@ -47,15 +49,22 @@ public class Crypto {
         return new SecretKeySpec(key, "AES");
     }
 
+    public static String saveSymmetricKey(SecretKeySpec key) {
+        return Base64.encodeToString(key.getEncoded(), Base64.NO_WRAP);
+    }
+
+    public static SecretKeySpec loadSymmetricKey(String key) {
+        return new SecretKeySpec(Base64.decode(key, Base64.NO_WRAP), "AES");
+    }
+
     // Symmetrically Encrypts via AES Using 128-bit SHA-1 Hash Generated From Input String
-    public static String symmetricEncrypt(String message, String key)  {
+    public static String symmetricEncrypt(String message, SecretKeySpec key)  {
         Cipher cipher;
         byte[] cipherData = null;
-        SecretKeySpec genKey = keyFromString(key);
 
         try {
             cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.ENCRYPT_MODE, genKey);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
             cipherData = cipher.doFinal(message.getBytes());
         }
         catch (Exception e) {
@@ -64,14 +73,13 @@ public class Crypto {
         return Base64.encodeToString(cipherData, Base64.NO_WRAP);
     }
 
-    public static String symmetricDecrypt(String message, String key)  {
+    public static String symmetricDecrypt(String message, SecretKeySpec key)  {
         Cipher cipher;
         byte[] cipherData = null;
-        SecretKeySpec genKey = keyFromString(key);
 
         try {
             cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.DECRYPT_MODE, genKey);
+            cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] asd = message.getBytes();
             cipherData = cipher.doFinal(Base64.decode(message, Base64.NO_WRAP));
             return new String(cipherData);
@@ -108,19 +116,17 @@ public class Crypto {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
         byte[] encryptedBytes = cipher.doFinal(plain.getBytes());
-        String encrypted = bytesToString(encryptedBytes);
-        return encrypted;
+        return bytesToString(encryptedBytes);
 
     }
 
     public static String RSADecrypt (String result, PrivateKey privateKey) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException
     {
 
-        Cipher cipher =Cipher.getInstance("RSA");
+        Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         byte[] decryptedBytes = cipher.doFinal(stringToBytes(result));
-        String decrypted = new String(decryptedBytes);
-        return decrypted;
+        return new String(decryptedBytes);
 
     }
 
@@ -148,7 +154,6 @@ public class Crypto {
         return key64;
     }
 
-    // Transforms Public Key Object into String
     public static String savePublicKey(PublicKey publ) throws GeneralSecurityException {
         KeyFactory fact = KeyFactory.getInstance("RSA");
         X509EncodedKeySpec spec = fact.getKeySpec(publ,
@@ -172,6 +177,23 @@ public class Crypto {
         X509EncodedKeySpec spec = new X509EncodedKeySpec(data);
         KeyFactory fact = KeyFactory.getInstance("RSA");
         return fact.generatePublic(spec);
+    }
+
+
+    /*********************************** Tests *************************************/
+
+    // Test the Conversion of Symmetric Key from
+    public static void testSymmetricConversion(String message) {
+        SecretKeySpec testkey = Crypto.keyFromString("test");
+        String enc = Crypto.symmetricEncrypt("test", testkey);
+        String keystring = Crypto.saveSymmetricKey(testkey);
+        SecretKeySpec key = Crypto.loadSymmetricKey(keystring);
+        String dec = Crypto.symmetricDecrypt(enc, key);
+        if(message.equals(dec)) {
+            Log.d("LOG", "Symmetric key string conversion passed.");
+        } else {
+            Log.d("LOG", "Symmetric key string conversion failed.");
+        }
     }
 
 }

@@ -2,6 +2,8 @@ package com.example.auth;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
@@ -20,6 +22,17 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+
+import javax.crypto.spec.SecretKeySpec;
+
+import static com.example.auth.Crypto.generateKeyPair;
 
 public class LoginActivity extends BaseActivity implements View.OnClickListener {
 	private static final String TAG = "EmailPasswordActivity";
@@ -27,6 +40,8 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 	private FirebaseAuth mAuth;
 	private TextView mTextViewProfile;
 	private TextInputLayout mLayoutEmail, mLayoutPassword;
+	SecretKeySpec localKey;
+	DatabaseReference mDB;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -43,6 +58,9 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		findViewById(R.id.login_sign_in_button).setOnClickListener(this);
 
 		mAuth = FirebaseAuth.getInstance();
+
+		// Get Database Reference
+		mDB = FirebaseDatabase.getInstance().getReference();
 
 	}
 
@@ -62,23 +80,70 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 	// Allows User to Create Account with Email and Password
 	private void createAccount(String email, String password) {
+		// If Input Forms are Invalid, Notify User of Error
 		if (!validateForm()) {
 			return;
 		}
+		final String pass = password;
 		showProgressDialog();
 		mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 			@Override
 			public void onComplete(@NonNull Task<AuthResult> task) {
+				// If Account Creation Unsuccessful, Notify User of Error
 				if (!task.isSuccessful()) {
 					mTextViewProfile.setTextColor(Color.RED);
 					mTextViewProfile.setText(task.getException().getMessage());
-				} else {
+				}
+				// If Account Creation Successful, Set Up Database and Request Email Verification
+				else {
 					mTextViewProfile.setText("");
 
-					// TODO ----------------------------------------------------
-					// TODO Create databases for private key, channels, messages
-					// TODO-----------------------------------------------------
+					// Generate User's Local Symmetric Key from Password
+					localKey = Crypto.keyFromString(pass);
 
+					// Create Local SQLite Database With User ID As Name and Generate Tables
+					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
+
+					// Generate RSA Public/Private Key Pair, Encrypt with AES, and Store in Local Database
+					String prvEncrypt = null;
+					String pubEncrypt = null;
+					KeyPair asymKeys = Crypto.generateKeyPair();
+					try {
+						String prvString = Crypto.savePrivateKey(asymKeys.getPrivate());
+						String pubString = Crypto.savePublicKey(asymKeys.getPublic());
+						prvEncrypt = Crypto.symmetricEncrypt(prvString, localKey);
+						pubEncrypt = Crypto.symmetricEncrypt(pubString, localKey);
+					} catch (GeneralSecurityException e) {
+						e.printStackTrace();
+					}
+					localDB.execSQL("INSERT INTO AsymKeys VALUES('" + pubEncrypt + "','" + prvEncrypt + "');");
+
+					// TODO Begin Test Block
+						// Test if Key Storage Successful
+						// Tested and Working as of 10/29/19 (Stephen)
+						Cursor keysFromDB = localDB.rawQuery("Select * from AsymKeys",null);
+						keysFromDB.moveToFirst();
+						try {
+							String encryptTest = Crypto.RSAEncrypt("Test message", asymKeys.getPublic());
+							PrivateKey prvFromDB = Crypto.loadPrivateKey(Crypto.symmetricDecrypt((keysFromDB.getString(1)), localKey));
+							String decryptTest = Crypto.RSADecrypt(encryptTest, prvFromDB);
+							if (decryptTest.equals("Test message")) {
+								Log.d("LOG", "Key storage successful.");
+							}
+						} catch (GeneralSecurityException e) {
+							e.printStackTrace();
+						}
+					// TODO End Test Block
+
+					// Store Public Key in the Firebase Database
+					try {
+						mDB.child("PublicKeys").child(mAuth.getUid()).setValue(Crypto.savePublicKey(asymKeys.getPublic()));
+					} catch (GeneralSecurityException e) {
+						e.printStackTrace();
+					}
+
+					// Generation Verification Email and Sign Out of Account
 					sendVerify();
 					mAuth.signOut();
 				}
@@ -91,6 +156,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		if (!validateForm()) {
 			return;
 		}
+		final String pass = password;
 		showProgressDialog();
 		mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 			@Override
@@ -104,12 +170,14 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 					mAuth.signOut();
 				} else {
 
-					// TODO -------------------------------------------------------------------
-					// TODO We need to use the input password to decrypt the local sql database
-					// TODO--------------------------------------------------------------------
+					// Generate User's Local Symmetric Key from Password
+					localKey = Crypto.keyFromString(pass);
+
+					// TODO We need to find some way of backing up all user data
+					// TODO in the Firebase database encrypted with local symmetric key
 
 					mTextViewProfile.setText("");
-					gotoMain();
+					gotoMain(localKey);
 
 				}
 				hideProgressDialog();
@@ -143,8 +211,8 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 	}
 
 	// Initiates Main Chat App Activity
-	private void gotoMain() {
-		startActivity(new Intent(this, MainActivity.class));
+	private void gotoMain(SecretKeySpec localKey) {
+		startActivity(new Intent(this, MainActivity.class).putExtra("pass", localKey));
 	}
 
 	// Sends Verification Email to User upon Account Creation
