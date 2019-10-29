@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // TODO Remove when Data Collection Sorted
         messages.add("Stephen");
         messages.add("Sam, Seth, Henry");
+        
 
         // Set Up RecyclerView
         RecyclerView recyclerView = findViewById(R.id.message_list);
