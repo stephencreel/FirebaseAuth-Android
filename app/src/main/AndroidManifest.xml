@@ -12,7 +12,8 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".MainActivity"></activity>
+        <activity android:windowSoftInputMode="adjustNothing" android:name=".NewChatActivity"/>
+        <activity android:name=".MainActivity" />
         <activity android:name=".ChatActivity" />
         <activity
             android:name=".LoginActivity"

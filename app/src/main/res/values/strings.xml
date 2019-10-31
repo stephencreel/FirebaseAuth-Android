@@ -2,9 +2,6 @@
 <resources>
     <string name="app_name">Authentication</string>
 
-    <string name="label_google_sign_in">Firebase + Google Sign In</string>
-    <string name="label_facebook_login">Firebase + Facebook Login</string>
-    <string name="label_twitter_login">Firebase + Twitter Login</string>
     <string name="label_emailpassword">Email/Password Authentication</string>
     <string name="label_anonymous_auth">Anonymous Authentication</string>
     <string name="label_phone_auth">Phone Authentication</string>
@@ -46,5 +43,7 @@
     <string name="instant_validation">(instant validation)</string>
     <string name="firebase_status_fmt">Firebase User: %s</string>
     <string name="new_chat">New Chat</string>
+    <string name="add_chat">Add Chat</string>
+    <string name="back">Back</string>
 
 </resources>

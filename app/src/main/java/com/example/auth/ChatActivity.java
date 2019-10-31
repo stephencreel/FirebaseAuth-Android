@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -25,34 +26,18 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         mAuth = FirebaseAuth.getInstance();
 
         findViewById(R.id.button5).setOnClickListener(this);
+
+        String channelName = getIntent().getExtras().getString("channelName");
+        TextView textView = findViewById(R.id.textView);
+        textView.setText("Channel name:" + channelName);
+
     }
 
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.button5) {
-                signOut();
+                finish();
         }
     }
-
-    private void signOut() {
-        AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        alert.setMessage(R.string.logout);
-        alert.setCancelable(false);
-        alert.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                mAuth.signOut();
-                finish();
-            }
-        });
-        alert.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-            }
-        });
-        alert.show();
-    }
-
 
 }

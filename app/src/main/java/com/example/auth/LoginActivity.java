@@ -40,6 +40,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 	private FirebaseAuth mAuth;
 	private TextView mTextViewProfile;
 	private TextInputLayout mLayoutEmail, mLayoutPassword;
+	String pass;
 	SecretKeySpec localKey;
 	DatabaseReference mDB;
 
@@ -61,6 +62,8 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 		// Get Database Reference
 		mDB = FirebaseDatabase.getInstance().getReference();
+
+		startActivity(new Intent(this, NewChatActivity.class));
 
 	}
 
@@ -84,7 +87,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		if (!validateForm()) {
 			return;
 		}
-		final String pass = password;
+		pass = password;
 		showProgressDialog();
 		mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 			@Override
@@ -104,6 +107,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 					// Create Local SQLite Database With User ID As Name and Generate Tables
 					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID INTEGER PRIMARY KEY AUTOINCREMENT,ChannelName TEXT, SymmetricKey TEXT);");
 
 					// Generate RSA Public/Private Key Pair, Encrypt with AES, and Store in Local Database
 					String prvEncrypt = null;
@@ -156,7 +160,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		if (!validateForm()) {
 			return;
 		}
-		final String pass = password;
+		pass = password;
 		showProgressDialog();
 		mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 			@Override
@@ -212,7 +216,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 	// Initiates Main Chat App Activity
 	private void gotoMain(SecretKeySpec localKey) {
-		startActivity(new Intent(this, MainActivity.class).putExtra("pass", localKey));
+		startActivity(new Intent(this, MainActivity.class).putExtra("pass", pass));
 	}
 
 	// Sends Verification Email to User upon Account Creation
