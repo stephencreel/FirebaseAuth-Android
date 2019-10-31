@@ -17,6 +17,8 @@ import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Random;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -47,6 +49,11 @@ public class Crypto {
             e.printStackTrace();
         }
         return new SecretKeySpec(key, "AES");
+    }
+
+    // Generates a Random 128-bit Symmetric Key
+    public static String generateSymmetricKey() {
+        return saveSymmetricKey(keyFromString(generateRanString(20)));
     }
 
     public static String saveSymmetricKey(SecretKeySpec key) {
@@ -179,6 +186,19 @@ public class Crypto {
         return fact.generatePublic(spec);
     }
 
+    /********************************** Other *************************************/
+
+    // Generate Random 20-Character String
+    public static String generateRanString (Integer size) {
+        final String data = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz|!£%&/=@";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(size);
+        for (int i = 0; i < size; i++) {
+            sb.append(data.charAt(random.nextInt(data.length())));
+        }
+        return sb.toString();
+
+    }
 
     /*********************************** Tests *************************************/
 

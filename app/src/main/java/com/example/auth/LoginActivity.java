@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import com.google.android.material.textfield.TextInputLayout;
-
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -16,7 +15,6 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
@@ -24,15 +22,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
-import java.security.PublicKey;
-
 import javax.crypto.spec.SecretKeySpec;
-
-import static com.example.auth.Crypto.generateKeyPair;
 
 public class LoginActivity extends BaseActivity implements View.OnClickListener {
 	private static final String TAG = "EmailPasswordActivity";
@@ -55,6 +48,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		mLayoutEmail = findViewById(R.id.layout_email);
 		mLayoutPassword = findViewById(R.id.layout_password);
 
+		// Set Click Listeners for Buttons
 		findViewById(R.id.login_create_account_button).setOnClickListener(this);
 		findViewById(R.id.login_sign_in_button).setOnClickListener(this);
 
@@ -86,6 +80,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 			return;
 		}
 		pass = password;
+		final String userEmail = email;
 		showProgressDialog();
 		mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
 			@Override
@@ -138,9 +133,11 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 						}
 					// TODO End Test Block
 
-					// Store Public Key in the Firebase Database
+					// Store User Data and Public Key in the Firebase Database
 					try {
-						mDB.child("PublicKeys").child(mAuth.getUid()).setValue(Crypto.savePublicKey(asymKeys.getPublic()));
+						mDB.child("Users").child(mAuth.getUid()).child("public_key").setValue(Crypto.savePublicKey(asymKeys.getPublic()));
+						mDB.child("Users").child(mAuth.getUid()).child("email").setValue(userEmail);
+						mDB.child("Channels").child(mAuth.getUid()).setValue("True");
 					} catch (GeneralSecurityException e) {
 						e.printStackTrace();
 					}
