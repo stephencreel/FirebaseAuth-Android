@@ -63,8 +63,6 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		// Get Database Reference
 		mDB = FirebaseDatabase.getInstance().getReference();
 
-		startActivity(new Intent(this, NewChatActivity.class));
-
 	}
 
 	@Override
