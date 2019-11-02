@@ -112,30 +112,32 @@ public class NewChatActivity extends BaseActivity implements View.OnClickListene
     }
 
     public void establishChannels() throws GeneralSecurityException {
-        DatabaseReference channelDB = FirebaseDatabase.getInstance().getReference();
-        addUser(userEmail);
-        for(userData user : savedUsers) {
-            Channel newChannel = createChannel(user.publicKey);
-            channelDB.child("Channels").child(user.userID).child(newChannel.channel_id).setValue(newChannel);
-        }
-    }
-
-
-    // Generates a New Channel Object from User Input and Encrypts with Public Key
-    public Channel createChannel(String publicKey) throws GeneralSecurityException {
-        // Get Channel Name and Encrypt
-        String channelName = Crypto.RSAEncrypt(mChatName.getText().toString(), Crypto.loadPublicKey(publicKey));
-
-        // Generate a Symmetric Key for the Channel and Encrypt
-        String symmKey = Crypto.generateSymmetricKey();
-        String channelKey = Crypto.RSAEncrypt(symmKey, Crypto.loadPublicKey(publicKey));
-
         // Generate a Channel ID and Check to See if ID is in Use
         String channelID = Crypto.generateRanString(20);
         Log.d("LOG", "Trying channel ID: " + channelID);
         while(channelExists(channelID)) {
             channelID = Crypto.generateRanString(20);
         }
+
+        // Generate a Symmetric Key for the Channel and Encrypt
+        String symmKey = Crypto.generateSymmetricKey();
+
+        DatabaseReference channelDB = FirebaseDatabase.getInstance().getReference();
+        addUser(userEmail);
+        for(userData user : savedUsers) {
+            Channel newChannel = createChannel(channelID, symmKey, user.publicKey);
+            channelDB.child("Channels").child(user.userID).child(newChannel.channel_id).setValue(newChannel);
+        }
+    }
+
+
+    // Generates a New Channel Object from User Input and Encrypts with Public Key
+    public Channel createChannel(String channelID, String symmKey, String publicKey) throws GeneralSecurityException {
+        // Get Channel Name and Encrypt
+        String channelName = Crypto.RSAEncrypt(mChatName.getText().toString(), Crypto.loadPublicKey(publicKey));
+
+        // Encrypt Symmetric Key
+        String channelKey = Crypto.RSAEncrypt(symmKey, Crypto.loadPublicKey(publicKey));
 
         // Create Channel Object
         return new Channel(channelID, channelName, channelKey);

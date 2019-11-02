@@ -1,7 +1,6 @@
 package com.example.auth;
 
 import android.content.Intent;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -22,7 +21,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
-import java.security.PrivateKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class LoginActivity extends BaseActivity implements View.OnClickListener {
@@ -54,9 +52,6 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 		// Get Database Reference
 		mDB = FirebaseDatabase.getInstance().getReference();
-
-		mEdtEmail.setText("hinakshu@gmail.com");
-		mEdtPassword.setText("asdfasdf");
 
 	}
 
@@ -166,7 +161,6 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 					// Ensure Local Database and Tables are Created (In Case User Logs in on New Device)
 					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
-					localDB.execSQL("DELETE FROM Messages");
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID TEXT PRIMARY KEY, ChannelName TEXT, SymmetricKey TEXT, LastUpdate INTEGER);");
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, TimeStamp INTEGER);");
 

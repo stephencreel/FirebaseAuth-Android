@@ -57,8 +57,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener,R
         pass = getIntent().getExtras().getString("pass");
         localKey = Crypto.keyFromString(pass);
 
-        localDB.execSQL("DELETE FROM Channels");
-
         // Retrieve and Decrypt Private Key
         getPrivateKey();
 
