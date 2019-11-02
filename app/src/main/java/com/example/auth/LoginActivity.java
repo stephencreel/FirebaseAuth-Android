@@ -1,6 +1,5 @@
 package com.example.auth;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -11,7 +10,6 @@ import com.google.android.material.textfield.TextInputLayout;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -57,6 +55,9 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		// Get Database Reference
 		mDB = FirebaseDatabase.getInstance().getReference();
 
+		mEdtEmail.setText("hinakshu@gmail.com");
+		mEdtPassword.setText("asdfasdf");
+
 	}
 
 	@Override
@@ -100,9 +101,10 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 					// Create Local SQLite Database With User ID As Name and Generate Tables
 					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
-					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID INTEGER PRIMARY KEY AUTOINCREMENT,ChannelName TEXT, SymmetricKey TEXT);");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID TEXT PRIMARY KEY, ChannelName TEXT, SymmetricKey TEXT, LastUpdate INTEGER);");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, TimeSTAMP INTEGER);");
 
-					// Generate RSA Public/Private Key Pair, Encrypt with AES, and Store in Local Database
+					// Generate RSA Public/Private Key Pair, Encrypt with AES, and Store in Local Database and Firebase Database
 					String prvEncrypt = null;
 					String pubEncrypt = null;
 					KeyPair asymKeys = Crypto.generateKeyPair();
@@ -115,23 +117,12 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 						e.printStackTrace();
 					}
 					localDB.execSQL("INSERT INTO AsymKeys VALUES('" + pubEncrypt + "','" + prvEncrypt + "');");
-
-					// TODO Begin Test Block
-						// Test if Key Storage Successful
-						// Tested and Working as of 10/29/19 (Stephen)
-						Cursor keysFromDB = localDB.rawQuery("Select * from AsymKeys",null);
-						keysFromDB.moveToFirst();
-						try {
-							String encryptTest = Crypto.RSAEncrypt("Test message", asymKeys.getPublic());
-							PrivateKey prvFromDB = Crypto.loadPrivateKey(Crypto.symmetricDecrypt((keysFromDB.getString(1)), localKey));
-							String decryptTest = Crypto.RSADecrypt(encryptTest, prvFromDB);
-							if (decryptTest.equals("Test message")) {
-								Log.d("LOG", "Key storage successful.");
-							}
-						} catch (GeneralSecurityException e) {
-							e.printStackTrace();
-						}
-					// TODO End Test Block
+					try {
+						mDB.child("PrivateData").child(mAuth.getUid()).child("public_key").setValue(Crypto.symmetricEncrypt(Crypto.savePublicKey(asymKeys.getPublic()), localKey));
+						mDB.child("PrivateData").child(mAuth.getUid()).child("private_key").setValue(Crypto.symmetricEncrypt(Crypto.savePrivateKey(asymKeys.getPrivate()), localKey));
+					} catch (GeneralSecurityException e) {
+						e.printStackTrace();
+					}
 
 					// Store User Data and Public Key in the Firebase Database
 					try {
@@ -172,11 +163,15 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 					// Generate User's Local Symmetric Key from Password
 					localKey = Crypto.keyFromString(pass);
 
-					// TODO We need to find some way of backing up all user data
-					// TODO in the Firebase database encrypted with local symmetric key
+					// Ensure Local Database and Tables are Created (In Case User Logs in on New Device)
+					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
+					localDB.execSQL("DELETE FROM Messages");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID TEXT PRIMARY KEY, ChannelName TEXT, SymmetricKey TEXT, LastUpdate INTEGER);");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, TimeStamp INTEGER);");
 
 					mTextViewProfile.setText("");
-					gotoMain(localKey);
+					gotoMain();
 
 				}
 				hideProgressDialog();
@@ -199,18 +194,8 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 		}
 	}
 
-	// Hides the Keyboard on OnClick Event to Better Display Error Messages
-	public static void hideKeyboard(Activity activity) {
-		InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
-		View view = activity.getCurrentFocus();
-		if (view == null) {
-			view = new View(activity);
-		}
-		imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-	}
-
 	// Initiates Main Chat App Activity
-	private void gotoMain(SecretKeySpec localKey) {
+	private void gotoMain() {
 		startActivity(new Intent(this, MainActivity.class).putExtra("pass", pass));
 	}
 

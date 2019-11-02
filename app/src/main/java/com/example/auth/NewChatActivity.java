@@ -1,25 +1,16 @@
 package com.example.auth;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import android.app.Activity;
-import android.content.Intent;
-import android.database.Cursor;
 import android.os.Bundle;
-import android.service.autofill.TextValueSanitizer;
+import android.service.autofill.UserData;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -30,11 +21,14 @@ import com.google.firebase.database.ValueEventListener;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 
-public class NewChatActivity extends AppCompatActivity implements View.OnClickListener,RecyclerViewAdapter.ItemClickListener {
+public class NewChatActivity extends BaseActivity implements View.OnClickListener,RecyclerViewAdapter.ItemClickListener {
+    private FirebaseAuth mAuth;
     ArrayList<String> emails = new ArrayList<>();
     ArrayList<userData> savedUsers = new ArrayList<>();
     ArrayList<userData> userList = new ArrayList<>();
     RecyclerViewAdapter adapter;
+    DatabaseReference mDB;
+    String userEmail = null;
     Boolean chanExists = false;
     private TextInputEditText mChatName, mUserName;
 
@@ -43,12 +37,20 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_new_chat);
 
+        // Get Firebase Authentication Instance
+        mAuth = FirebaseAuth.getInstance();
+
+        // Get Firebase Database Reference
+        mDB = FirebaseDatabase.getInstance().getReference();
+
         mChatName = findViewById(R.id.chatNameInput);
         mUserName = findViewById(R.id.userInput);
 
         findViewById(R.id.new_chat_back_button).setOnClickListener(this);
         findViewById(R.id.new_chat_add_button).setOnClickListener(this);
         findViewById(R.id.addUser).setOnClickListener(this);
+
+        getEmail();
 
         getUsers();
 
@@ -111,11 +113,10 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
 
     public void establishChannels() throws GeneralSecurityException {
         DatabaseReference channelDB = FirebaseDatabase.getInstance().getReference();
+        addUser(userEmail);
         for(userData user : savedUsers) {
             Channel newChannel = createChannel(user.publicKey);
             channelDB.child("Channels").child(user.userID).child(newChannel.channel_id).setValue(newChannel);
-            channelDB.child("ChannelList").child(newChannel.channel_id).setValue("true");
-
         }
     }
 
@@ -126,10 +127,12 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
         String channelName = Crypto.RSAEncrypt(mChatName.getText().toString(), Crypto.loadPublicKey(publicKey));
 
         // Generate a Symmetric Key for the Channel and Encrypt
-        String channelKey = Crypto.RSAEncrypt(Crypto.generateSymmetricKey(), Crypto.loadPublicKey(publicKey));
+        String symmKey = Crypto.generateSymmetricKey();
+        String channelKey = Crypto.RSAEncrypt(symmKey, Crypto.loadPublicKey(publicKey));
 
         // Generate a Channel ID and Check to See if ID is in Use
         String channelID = Crypto.generateRanString(20);
+        Log.d("LOG", "Trying channel ID: " + channelID);
         while(channelExists(channelID)) {
             channelID = Crypto.generateRanString(20);
         }
@@ -141,6 +144,7 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
     // Checks to See if Generated Channel ID is Already in Use
     public Boolean channelExists(String channelID) {
         chanExists = false;
+        final String chanIDTest = channelID;
         final DatabaseReference channelDB = FirebaseDatabase.getInstance().getReference().child("ChannelList");
         channelDB.orderByKey().equalTo(channelID)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -152,6 +156,7 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
                             chanExists = true;
                         } else {
                             Log.d("LOG", "Channel ID not in use.");
+                            channelDB.child(chanIDTest).setValue("true");
                         }
                     }
 
@@ -161,15 +166,35 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
         return chanExists;
     }
 
+    public void getEmail() {
+        showProgressDialog();
+        mDB.child("Users").child(mAuth.getUid()).orderByKey()
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        userEmail = dataSnapshot.child("email").getValue().toString();
+                    }
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) { }
+                });
+        hideProgressDialog();
+    }
+
     // Adds Valid User to List
     public void addUser(String email) {
         Boolean found = false;
         for(userData user : userList) {
+            // If a User with Input Email Exists
             if (user.email.equals(email)) {
+                // And the User List Doesn't Already Contain that Email
                 if(emails.contains(email)) {
-                    Toast.makeText(
-                            NewChatActivity.this, "User already selected.", Toast.LENGTH_LONG
-                    ).show();
+                    // Don't Toast if Email is User's Own Email
+                    if(!email.equals(userEmail)) {
+                        Toast.makeText(
+                                NewChatActivity.this, "User already selected.", Toast.LENGTH_LONG
+                        ).show();
+                    }
                 }
                 else {
                     emails.add(email);
@@ -238,16 +263,6 @@ public class NewChatActivity extends AppCompatActivity implements View.OnClickLi
             this.symmetric_key = channelKey;
             this.channel_name = channelName;
         }
-    }
-
-    // Hides the Keyboard on OnClick Event to Better Display Error Messages
-    public static void hideKeyboard(Activity activity) {
-        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
-        View view = activity.getCurrentFocus();
-        if (view == null) {
-            view = new View(activity);
-        }
-        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
     // Updates the Visible List of Channels

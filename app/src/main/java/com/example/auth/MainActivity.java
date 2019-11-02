@@ -1,17 +1,14 @@
 package com.example.auth;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -19,20 +16,17 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
-import java.util.Random;
-
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener,RecyclerViewAdapter.ItemClickListener {
+public class MainActivity extends BaseActivity implements View.OnClickListener,RecyclerViewAdapter.ItemClickListener {
     private FirebaseAuth mAuth;
     RecyclerViewAdapter adapter;
     DatabaseReference mDB;
@@ -42,6 +36,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ArrayList<String> channels;
     ArrayList<String> channelIDs;
     PrivateKey privateKey;
+    String pubEncrypt;
+    String prvEncrypt;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,16 +57,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         pass = getIntent().getExtras().getString("pass");
         localKey = Crypto.keyFromString(pass);
 
-        // Get Private Key from Database
-        Cursor asymKeys = localDB.rawQuery("Select * from AsymKeys",null);
-        asymKeys.moveToFirst();
-        try {
-            String privKeyString = Crypto.symmetricDecrypt(asymKeys.getString(1), localKey);
-            privateKey = Crypto.loadPrivateKey(privKeyString);
-        } catch (GeneralSecurityException e) {
-            e.printStackTrace();
-        }
-        asymKeys.close();
+        localDB.execSQL("DELETE FROM Channels");
+
+        // Retrieve and Decrypt Private Key
+        getPrivateKey();
 
         // Set OnClick Listeners for Buttons
         findViewById(R.id.main_sign_out_button).setOnClickListener(this);
@@ -89,16 +79,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 finish();
                 break;
             case R.id.main_new_chat_button:
-
                 startActivity(new Intent(this, NewChatActivity.class));
-
                 break;
         }
     }
 
     @Override
     public void onItemClick(View view, int position) {
-        startActivity(new Intent(this, ChatActivity.class).putExtra("channelName", adapter.getItem(position)));
+        startActivity(new Intent(this, ChatActivity.class).putExtra("channelName", adapter.getItem(position)).putExtra("channelID", channelIDs.get(position)).putExtra("pass", pass));
+    }
+
+    // Sets Private Key from RSA Key Pair in Local Database if Exists, Else Retrieves from Firebase Database and Stores Pair Locally
+    public void getPrivateKey() {
+        showProgressDialog();
+        Cursor asymKeys = localDB.rawQuery("Select * from AsymKeys",null);
+        // If RSA Key Pair not in Local Database, Get from Firebase Database
+        if(asymKeys.getCount() <= 0){
+            mDB.child("PrivateData").child(mAuth.getUid()).orderByKey()
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            pubEncrypt = dataSnapshot.child("public_key").getValue().toString();
+                            prvEncrypt = dataSnapshot.child("private_key").getValue().toString();
+                            localDB.execSQL("INSERT INTO AsymKeys VALUES('" + pubEncrypt + "','" + prvEncrypt + "');");
+                            try {
+                                privateKey = Crypto.loadPrivateKey(Crypto.symmetricDecrypt(prvEncrypt, localKey));
+                            } catch (GeneralSecurityException e) {
+                                e.printStackTrace();
+                            }
+                            hideProgressDialog();
+                        }
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) { }
+                    });
+        }
+        else {
+            try {
+                asymKeys.moveToFirst();
+                String privKeyString = Crypto.symmetricDecrypt(asymKeys.getString(1), localKey);
+                privateKey = Crypto.loadPrivateKey(privKeyString);
+            } catch (GeneralSecurityException e) {
+                e.printStackTrace();
+            }
+            hideProgressDialog();
+        }
+        asymKeys.close();
     }
 
     // Adds a New Channel to the Local Database
@@ -106,9 +132,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         long unixTime = System.currentTimeMillis() / 1000;
         localDB.execSQL("INSERT INTO Channels (ChannelID, ChannelName, SymmetricKey, LastUpdate) " +
                 "VALUES('" + ID + "','" + Crypto.symmetricEncrypt(name, localKey) + "','" + Crypto.symmetricEncrypt(key, localKey) + "','" + unixTime + "');");
-        Log.d("LOG", name + ": " + unixTime);
+        Log.d("TESTLOG", name + ": " + ID);
     }
 
+    // Retrieve Differences in Local and Firebase Databases, and Update Local Database and Channel List
     public void syncChannels() {
 
         // Set Up Listener to Monitor For Change in Channels
@@ -118,7 +145,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 // Get Channel Data for Each Channel
                 String channelID = dataSnapshot.getKey();
-                Log.d("LOG", "Channel ID: " + channelID);
                 String channelName = dataSnapshot.child("channel_name").getValue().toString();
                 String channelKey = dataSnapshot.child("symmetric_key").getValue().toString();
 
@@ -126,6 +152,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 try {
                     channelName = Crypto.RSADecrypt(channelName, privateKey);
                     channelKey = Crypto.RSADecrypt(channelKey, privateKey);
+                    Log.e("TESTLOG", "Channel key unencrypted: " + channelKey);
                 } catch (NoSuchAlgorithmException e) {
                     e.printStackTrace();
                 } catch (NoSuchPaddingException e) {

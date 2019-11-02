@@ -190,7 +190,7 @@ public class Crypto {
 
     // Generate Random 20-Character String
     public static String generateRanString (Integer size) {
-        final String data = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz|!£%&/=@";
+        final String data = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         Random random = new Random();
         StringBuilder sb = new StringBuilder(size);
         for (int i = 0; i < size; i++) {
