@@ -26,6 +26,13 @@
             android:theme="@style/ThemeOverlay.MyDarkButton" />
 
         <Button
+            android:id="@+id/import_file_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Import File" />
+
+        <Button
             android:id="@+id/message_submit_button"
             style="?android:attr/button"
             android:layout_width="0dp"

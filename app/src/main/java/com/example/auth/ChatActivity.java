@@ -78,7 +78,6 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
 
         // Store Channel ID
         channelID = getIntent().getExtras().getString("channelID");
-        Log.d("TESTLOG", "Channel ID: " + channelID);
 
         // Get Local Symmetric Key
         pass = getIntent().getExtras().getString("pass");
@@ -88,13 +87,12 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
         Cursor keyCursor = localDB.rawQuery("Select SymmetricKey from Channels where ChannelID = '" + channelID + "'",null);
         keyCursor.moveToFirst();
         channelKey = Crypto.loadSymmetricKey(Crypto.symmetricDecrypt(keyCursor.getString(0), localKey));
-        Log.e("TESTLOG", "Channel key: " + keyCursor.getString(0));
-        Log.e("TESTLOG", "Channel key decrypt: " + Crypto.symmetricDecrypt(keyCursor.getString(0), localKey));
 
 
         // Get User Email
         getEmail();
 
+        findViewById(R.id.import_file_button).setOnClickListener(this);
         findViewById(R.id.message_back_button).setOnClickListener(this);
         findViewById(R.id.message_submit_button).setOnClickListener(this);
 
@@ -125,6 +123,11 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
                         e.printStackTrace();
                     }
                 }
+                break;
+            case R.id.import_file_button:
+                Toast.makeText(
+                        ChatActivity.this, "You clicked the import file button.", Toast.LENGTH_LONG
+                ).show();
                 break;
         }
     }
@@ -267,7 +270,7 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
 
         // Unencrypt and Populate Channel Data from Database
         // Sort Descending By Most Recently Updated Channels
-        Cursor messagesFromDB = localDB.rawQuery("Select * from Messages WHERE ChannelID = '" + channelID +"' ORDER BY TimeStamp DESC",null);
+        Cursor messagesFromDB = localDB.rawQuery("Select * from Messages WHERE ChannelID = '" + channelID +"' ORDER BY TimeStamp ASC",null);
         while(messagesFromDB.moveToNext()) {
             String message = Crypto.symmetricDecrypt(messagesFromDB.getString(2), localKey);
             if(!(message == null) && !message.equals("")) {

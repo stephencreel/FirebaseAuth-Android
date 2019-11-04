@@ -64,6 +64,9 @@ public class MainActivity extends BaseActivity implements View.OnClickListener,R
         findViewById(R.id.main_sign_out_button).setOnClickListener(this);
         findViewById(R.id.main_new_chat_button).setOnClickListener(this);
 
+        // Update UI With Locally Stored Channels
+        updateUI();
+
         // Sync Channels to Local Database and Begin Listening for Changes
         syncChannels();
 
