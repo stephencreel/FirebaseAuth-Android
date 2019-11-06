@@ -125,12 +125,34 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
                 }
                 break;
             case R.id.import_file_button:
-                Toast.makeText(
-                        ChatActivity.this, "You clicked the import file button.", Toast.LENGTH_LONG
-                ).show();
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
+                startActivityForResult(intent, 7);
                 break;
         }
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // TODO Auto-generated method stub
+
+        super.onActivityResult(requestCode, resultCode, data);
+        switch (requestCode) {
+
+            case 7:
+
+                if (resultCode == RESULT_OK) {
+
+                    String PathHolder = data.getData().getPath();
+
+                    Toast.makeText(this, PathHolder, Toast.LENGTH_LONG).show();
+
+                }
+                break;
+
+        }
+    }
+
 
     @Override
     public void onItemClick(View view, int position) {
