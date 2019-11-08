@@ -80,6 +80,7 @@ public class Crypto {
         return Base64.encodeToString(cipherData, Base64.NO_WRAP);
     }
 
+
     public static String symmetricDecrypt(String message, SecretKeySpec key)  {
         Cipher cipher;
         byte[] cipherData = null;
@@ -87,7 +88,6 @@ public class Crypto {
         try {
             cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] asd = message.getBytes();
             cipherData = cipher.doFinal(Base64.decode(message, Base64.NO_WRAP));
             return new String(cipherData);
         }
@@ -96,6 +96,27 @@ public class Crypto {
         }
         return null;
     }
+
+    public static byte[] encodeFile(byte[] fileData, SecretKeySpec key) throws Exception
+    {
+
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        byte[] encrypted = cipher.doFinal(fileData);
+
+        return encrypted;
+    }
+
+    public static byte[] decodeFile(byte[] fileData, SecretKeySpec key) throws Exception
+    {
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.DECRYPT_MODE, key);
+
+        byte[] decrypted = cipher.doFinal(fileData);
+
+        return decrypted;
+    }
+
 
 
     /*************************** Asymmetric Encryption *****************************/

@@ -133,7 +133,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener,R
         long unixTime = System.currentTimeMillis() / 1000;
         localDB.execSQL("INSERT INTO Channels (ChannelID, ChannelName, SymmetricKey, LastUpdate) " +
                 "VALUES('" + ID + "','" + Crypto.symmetricEncrypt(name, localKey) + "','" + Crypto.symmetricEncrypt(key, localKey) + "','" + unixTime + "');");
-        Log.d("TESTLOG", name + ": " + ID);
     }
 
     // Retrieve Differences in Local and Firebase Databases, and Update Local Database and Channel List
@@ -153,7 +152,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener,R
                 try {
                     channelName = Crypto.RSADecrypt(channelName, privateKey);
                     channelKey = Crypto.RSADecrypt(channelKey, privateKey);
-                    Log.e("TESTLOG", "Channel key unencrypted: " + channelKey);
                 } catch (NoSuchAlgorithmException e) {
                     e.printStackTrace();
                 } catch (NoSuchPaddingException e) {

@@ -1,16 +1,12 @@
 package com.example.auth;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import android.Manifest;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -23,37 +19,32 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
-import java.io.BufferedReader;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.security.GeneralSecurityException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
 public class ChatActivity extends BaseActivity implements View.OnClickListener, RecyclerViewAdapter.ItemClickListener {
@@ -61,6 +52,7 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
     private TextInputEditText mMessageInput;
     RecyclerViewAdapter adapter;
     DatabaseReference mDB;
+    FirebaseStorage storage;
     String userEmail = null;
     String channelID = null;
     String pass;
@@ -83,6 +75,9 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
         // Get Firebase Database Reference
         mDB = FirebaseDatabase.getInstance().getReference();
 
+        // Get Firebase Storage Reference
+        storage = FirebaseStorage.getInstance();
+
         // Get Local Database Reference
         localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
 
@@ -103,16 +98,18 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
         keyCursor.moveToFirst();
         channelKey = Crypto.loadSymmetricKey(Crypto.symmetricDecrypt(keyCursor.getString(0), localKey));
 
-
         // Get User Email
         getEmail();
 
+        // Set Button Clcikc Listeners
         findViewById(R.id.import_file_button).setOnClickListener(this);
         findViewById(R.id.message_back_button).setOnClickListener(this);
         findViewById(R.id.message_submit_button).setOnClickListener(this);
 
+        // Set Variable for Message Data
         mMessageInput = findViewById(R.id.messageData);
 
+        // Sync Messages with Firebase Database
         syncMessages();
 
     }
@@ -149,8 +146,53 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
     }
 
     @Override
+    public void onItemClick(View view, int position) {
+        // Check to See if Clicked Message is File
+        for(final FileData file : files) {
+            if(file.fileString.equals(adapter.getItem(position))) {
+                Toast.makeText(
+                        ChatActivity.this, "Downloading file to root Android internal storage folder.", Toast.LENGTH_LONG
+                ).show();
+
+                if (Build.VERSION.SDK_INT >= 23) {
+                    int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                    }
+                }
+
+                StorageReference storageRef = storage.getReference().child(file.fileID);
+                final long ONE_MEGABYTE = 1024 * 1024;
+                storageRef.child(file.fileName).getBytes(ONE_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                    @Override
+                    public void onSuccess(byte[] bytes) {
+                        Log.d("TESTLOG", "File downloaded.");
+                        byte[] decBytes = null;
+                        try {
+                            decBytes = Crypto.decodeFile(bytes, channelKey);
+                            File newFile = new File(Environment.getExternalStorageDirectory(), file.fileName);
+                            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(newFile));
+                            bos.write(decBytes);
+                            bos.flush();
+                            bos.close();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception exception) {
+                        Log.d("TESTLOG", "Could not download file.");
+                    }
+                });
+
+            }
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // TODO Auto-generated method stub
 
         super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode) {
@@ -162,14 +204,10 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
                     String PathHolder = data.getData().getPath();
 
                     Toast.makeText(this, PathHolder, Toast.LENGTH_LONG).show();
-                    Log.d("TESTLOG", "Path: " + PathHolder);
 
                     String sdPath = PathHolder.substring(PathHolder.indexOf(":") + 1, PathHolder.length());
-                    Log.d("TESTLOG", "Shortened Path: " + sdPath);
 
                     String fileName = PathHolder.substring(PathHolder.lastIndexOf("/") + 1, PathHolder.length());
-
-                    Log.d("TESTLOG", "File name: " + fileName);
 
                     if (Build.VERSION.SDK_INT >= 23) {
                         int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
@@ -178,82 +216,46 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
                         }
                     }
 
+                    FileInputStream fis = null;
+                    byte[] bytes = null;
                     try {
-                        String fileData = getStringFromFile(sdPath);
-                        establishFileMessage(fileName, fileData);
+                        fis = new FileInputStream(sdPath);
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        byte[] b = new byte[1024];
+
+                        for (int readNum; (readNum = fis.read(b)) != -1;) {
+                            bos.write(b, 0, readNum);
+                        }
+                        bytes = bos.toByteArray();
+                        bytes = Crypto.encodeFile(bytes, channelKey);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+
+
+                    ChatActivity.Message message = createFileMessage(fileName);
+                    establishFileMessage(message);
+
+                    StorageReference storageRef = storage.getReference().child(message.message_id);
+                    UploadTask uploadTask = storageRef.child(fileName).putBytes(bytes);
+                    uploadTask.addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception exception) {
+                            Log.d("LOGTEST", "Failed to upload.");
+                        }
+                    }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            Log.d("LOGTEST", "Uploaded file.");
+                        }
+                    });
                 }
                 break;
 
-        }
-    }
-
-    public static String convertStreamToString(InputStream is) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder sb = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line).append("\n");
-        }
-        reader.close();
-        return sb.toString();
-    }
-
-    public static String getStringFromFile (String filePath) throws Exception {
-        File fl = new File(filePath);
-        FileInputStream fin = new FileInputStream(fl);
-        String ret = convertStreamToString(fin);
-        //Make sure you close all streams.
-        fin.close();
-        return ret;
-    }
-
-    private void writeToFile(String data, String fileName) {
-        try {
-            if (Build.VERSION.SDK_INT >= 23) {
-                int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-                if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                }
-            }
-            File file = new File(Environment.getExternalStorageDirectory(), fileName);
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(new FileOutputStream(file));
-            outputStreamWriter.write(data);
-            outputStreamWriter.close();
-        }
-        catch (IOException e) {
-            Log.e("Exception", "File write failed: " + e.toString());
-        }
-    }
-
-
-    @Override
-    public void onItemClick(View view, int position) {
-        for(final FileData file : files) {
-            if(file.fileString.equals(adapter.getItem(position))) {
-                Toast.makeText(
-                        ChatActivity.this, "Downloading file to root Android internal storage folder.", Toast.LENGTH_LONG
-                ).show();
-                Log.d("TESTLOG", "Trying to download: " + file.fileID);
-                final String fileIDtest = file.fileID;
-                final DatabaseReference fileDB = FirebaseDatabase.getInstance().getReference().child("Files");
-                fileDB.orderByKey()
-                        .addListenerForSingleValueEvent(new ValueEventListener() {
-
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                String fileData = dataSnapshot.child(fileIDtest).child("file_data").getValue().toString();
-                                String fileName = dataSnapshot.child(fileIDtest).child("file_name").getValue().toString();
-                                fileData = Crypto.symmetricDecrypt(fileData, channelKey);
-                                writeToFile(fileData, fileName);
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) { }
-                        });
-            }
         }
     }
 
@@ -263,13 +265,9 @@ public class ChatActivity extends BaseActivity implements View.OnClickListener, 
         messageDB.child("Messages").child(channelID).child(newMessage.message_id).setValue(newMessage);
     }
 
-    public void establishFileMessage(String fileName, String fileData) {
-        fileData = Crypto.symmetricEncrypt(fileData, channelKey);
+    public void establishFileMessage(Message message) {
         DatabaseReference messageDB = FirebaseDatabase.getInstance().getReference();
-        ChatActivity.Message newMessage = createFileMessage(fileName);
-        messageDB.child("Messages").child(channelID).child(newMessage.message_id).setValue(newMessage);
-        messageDB.child("Files").child(newMessage.message_id).child("file_name").setValue(fileName);
-        messageDB.child("Files").child(newMessage.message_id).child("file_data").setValue(fileData);
+        messageDB.child("Messages").child(channelID).child(message.message_id).setValue(message);
     }
 
     public ChatActivity.Message createFileMessage(String fileName) {
