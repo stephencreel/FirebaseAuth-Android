@@ -52,7 +52,6 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 		// Get Database Reference
 		mDB = FirebaseDatabase.getInstance().getReference();
-
 	}
 
 	@Override
@@ -95,10 +94,14 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 					// Create Local SQLite Database With User ID As Name and Generate Tables
 					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
+
+					// TODO Drop Tables for Testing
+					localDB.execSQL("DROP TABLE IF EXISTS Channels");
+					localDB.execSQL("DROP TABLE IF EXISTS Messages");
+
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID TEXT PRIMARY KEY, ChannelName TEXT, SymmetricKey TEXT, LastUpdate INTEGER);");
-					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, TimeSTAMP INTEGER);");
-
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, UserData TEXT, TimeSTAMP INTEGER, IsFile BOOLEAN);");
 					// Generate RSA Public/Private Key Pair, Encrypt with AES, and Store in Local Database and Firebase Database
 					String prvEncrypt = null;
 					String pubEncrypt = null;
@@ -160,9 +163,14 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
 
 					// Ensure Local Database and Tables are Created (In Case User Logs in on New Device)
 					SQLiteDatabase localDB = openOrCreateDatabase(mAuth.getUid(),MODE_PRIVATE,null);
+
+					// TODO Drop Tables for Testing
+					localDB.execSQL("DROP TABLE IF EXISTS Channels");
+					localDB.execSQL("DROP TABLE IF EXISTS Messages");
+
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS AsymKeys(PublicKey TEXT,PrivateKey TEXT);");
 					localDB.execSQL("CREATE TABLE IF NOT EXISTS Channels(ChannelID TEXT PRIMARY KEY, ChannelName TEXT, SymmetricKey TEXT, LastUpdate INTEGER);");
-					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, TimeStamp INTEGER);");
+					localDB.execSQL("CREATE TABLE IF NOT EXISTS Messages(MessageID TEXT PRIMARY KEY, ChannelID TEXT, Message TEXT, UserData TEXT, TimeSTAMP INTEGER, IsFile BOOLEAN);");
 
 					mTextViewProfile.setText("");
 					gotoMain();
